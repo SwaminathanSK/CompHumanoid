@@ -1,0 +1,11 @@
+Cython
+pkgconfig
+tabulate
+ipdb
+pyyaml
+tqdm
+pyzmq
+numpy
+scipy
+scikit-learn
+matplotlib

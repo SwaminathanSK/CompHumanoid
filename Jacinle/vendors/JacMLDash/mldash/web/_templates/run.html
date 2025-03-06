@@ -1,0 +1,179 @@
+{% autoescape None %}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center px-3 pt-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#desc/{{ desc.desc_name }}" onClick="loadPage(this)">{{ desc.desc_name }}</a></li>
+            <li class="breadcrumb-item"><a href="#desc/{{ desc.desc_name }}/expr/{{ expr.expr_name }}" onClick=loadPage(this)>{{ expr.expr_name }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ run.run_name }}</li>
+      </ol>
+    </nav>
+</div>
+
+<div class="experiment">
+    <dl>
+        {% if len(run_methods) > 0 %}
+        <dt>Customized Commands</dt>
+        <dd>
+            {% for cmd in run_methods %}
+            <a href="javascript:;" onClick="runCustomizedCommand(this)" data-desc="{{ desc.desc_name }}" data-expr="{{ expr.expr_name }}" data-run="{{ run.run_name }}" data-cmd="{{ cmd.__name__ }}">[{{cmd.command_name}}]</a>
+            {% end %}
+        </dd>
+        {% end %}
+        <dt>Run Description <a href="javascript:;" onClick="updateText(this)" id="edit-desc-link" data-desc="{{ desc.desc_name }}" data-expr="{{ expr.expr_name }}" data-run="{{ run.run_name }}" data-key="run_description" data-preid="edit-desc">Edit</a></dt>
+        <dd><pre class="pre-url" id="edit-desc">{{ format_viewer_link(run.run_description) }}</pre></dd>
+        <dt>Run Notes <a href="javascript:;" onClick="updateText(this)" id="edit-note-link" data-desc="{{ desc.desc_name }}" data-expr="{{ expr.expr_name }}" data-run="{{ run.run_name }}" data-key="run_notes" data-preid="edit-note">Edit</a></dt>
+        <dd><pre class="pre-url" id="edit-note">{{ format_viewer_link(run.run_notes) }}</pre></dd>
+        <dt>Create Time</dt>
+        <dd>{{ run.create_time }}</dd>
+        <dt>Update Time</dt>
+        <dd>{{ run.update_time }}</dd>
+        {% if '_git' in run_metainfo %}
+        <dt>Git <a href="javascript:;" data-bs-toggle="collapse" data-bs-target="#run-git-logs" aria-expanded="false" aria-controls="run-git-logs">[Toggle Logs]</a></dt>
+        <dd>
+          <a href="{{ git_remote_url() }}/tree/{{ run_metainfo['_git'] }}" target="_blank">{{ run_metainfo['_git'] }}</a>
+        </dd>
+        <div class="collapse" id="run-git-logs">
+          <dt>Git Log</dt>
+          <dd>
+          <pre>{{ escape(git_recent_logs(run_metainfo['_git'])) }}</pre>
+          </dd>
+        </div>
+        {% end %}
+
+        {% if run.refer is not None %}
+        <dt>Parent</dt>
+        <dd>
+        <a href="#desc/{{ desc.desc_name }}/expr/{{ expr.expr_name }}/run/{{ run.refer.run_name }}" onClick="loadPage(this)" class="run-link" data-desc="{{ desc.desc_name }}" data-expr="{{ expr.expr_name }}" data-run="{{ run.refer.run_name }}">{{ run.refer.run_name }}</a>
+        </dd>
+        {% end %}
+
+        <dt>
+        <div class="">
+            Metric Plots
+            <div id="metric-plot-dropdown" class="dropdown flow-end">
+                <a href="javscript:;" class="dropdown-toggle" id="metric-plot-dropdown-button" data-bs-toggle="dropdown" aria-expanded="false">
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="metric-plot-dropdown-button">
+                </ul>
+            </div>
+            <a href="javascript:;" data-bs-toggle="offcanvas" data-bs-target="#metric-plot-offcanvas" aria-controls="metric-plot-offcanvas">Show Raw Data</a>
+        </dt>
+        <dd>
+        <div class="container-fluid metric-plot-container">
+            <canvas id="metric-plot" width="900" height="250"></canvas>
+        </div>
+        </dd>
+
+        <dt>Metrics</dt>
+        <dd>{{ format_kv(run.metrics) }}</dd>
+        <dt>Command</dt>
+        <dd><code>{{ run.command }}</code></dd>
+        <dt>Args</dt>
+        <dd>{{ format_kv(run.args) }}</dd>
+        <dt>Configs</dt>
+        <dd>{{ format_kv_recursive_flat(run.configs) }}</dd>
+        {% for k, v in format_extra_items(run).items() %}
+        <dt>{{ k }}</dt>
+        <dd>{{ v }}</dd>
+        {% end %}
+        {% if run.metainfo_file is not None %}
+        <dt>Metainfo File</dt>
+        <dd>{{ format_log_fpath(run.metainfo_file) }}</dd>
+        {% end %}
+        {% if run.log_file is not None %}
+        <dt>Log File</dt>
+        <dd>{{ format_log_fpath(run.log_file) }}</dd>
+        {% end %}
+        {% if run.meter_file is not None %}
+        <dt>Meter File</dt>
+        <dd>{{ format_log_fpath(run.meter_file) }}</dd>
+        {% end %}
+        {% if run.tb_dir is not None %}
+        <dt>TensorBoard Dir</dt>
+        <dd><pre>{{ run.tb_dir }}</pre></dd>
+        {% end %}
+        <dt>Extra Information</dt>
+        <dd>{{ format_viewer_link(format_kv_recursive(run.extra_info)) }}</dd>
+    </dl>
+
+    {% if len(run.referee) > 0 %}
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered table-sm">
+            <thead>
+                <tr>
+                    <th>
+                        <div class="header clearfix">
+                            <h5 class="float-start">Sub-Runs</h5>
+                            <div class="float-end">
+                                <a href="javascript:;" onClick="deleteRuns(this)">Delete</a>
+                            </div>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rrun in run.referee %}
+                {% if not is_deleted(rrun) %}
+                <tr>
+                    <td class="run-row" data-desc="{{ desc.desc_name }}" data-expr="{{ expr.expr_name }}" data-run="{{ rrun.run_name }}" data-highlight="{{ format_kv_inline_tb(rrun.highlight_args) }}">
+                        <div class="d-flex">
+                            <div class="me-2"><input type="checkbox" /></div>
+                            <div>
+                                <div><b>SubRun:</b>
+                                    <a href="#desc/{{ desc.desc_name }}/expr/{{ expr.expr_name }}/run/{{ rrun.run_name }}" onClick="loadPage(this)" class="run-link">{{ rrun.run_name }}</a>
+                                    (<b>Created:</b> {{ rrun.create_time }}; <b>Updated</b>: {{ rrun.update_time }})
+                                </div>
+                                <div><b>Metrics:</b> {{ format_kv_inline(rrun.metrics) }}</div>
+                                <div><b>Command:</b> <code>{{ rrun.command }}</code></div>
+                                <div><b>Highlight args:</b> {{ format_kv_inline(rrun.highlight_args) }}</div>
+                                <div><b>Highlight configs:</b> {{ format_kv_inline(rrun.highlight_configs) }}</div>
+                                <div><b>Description:</b> <span class="inline-pre pre-url">{{ format_viewer_link(rrun.run_description) }}</span></div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% end %}
+                {% end %}
+            </tbody>
+        </table>
+    </div>
+    {% end %}
+</div>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="metric-plot-offcanvas" aria-labelledby="metric-plot-offcanvas-label">
+  <div class="offcanvas-header">
+    <h5>Metrics</h5>
+    <button type="button" class="btn-close text-reset" data-bs-dismiss="metric-plot-offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <pre id="metric-plot-data" class="inline-pre">
+    {{ run_metrics }}
+    </pre>
+  </div>
+</div>
+
+<script>
+window.metricData = JSON.parse($("#metric-plot-data").html());
+var metricKeys = [];
+for (let dict of metricData) {
+  for (let key in dict) {
+    if (!metricKeys.includes(key)) {
+      metricKeys.push(key);
+    }
+  }
+}
+metricKeys.sort();
+for (key of metricKeys) {
+  $("#metric-plot-dropdown ul").append($(' <li><a href="javascript:loadMetric(\'' + key + '\');" class="dropdown-iem">' + key + '</a></li> '));
+}
+
+if (metricKeys.includes("loss" )) {
+  loadMetric("loss");
+} else if (metricKeys.includes("accuracy")) {
+  loadMetric("accuracy");
+} else {
+  loadMetric(metricKeys[0]);
+}
+</script>
+
